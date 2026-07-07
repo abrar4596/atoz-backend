@@ -6,23 +6,22 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable')
 }
 
-const globalWithMongoose = global as typeof globalThis & {
-  mongoose?: {
-    conn: any
-    promise: Promise<any> | null
+// Extend the global object type
+declare global {
+  // eslint-disable-next-line no-var
+  var mongooseCache: {
+    conn: typeof mongoose.connection | null
+    promise: Promise<typeof mongoose.connection> | null
   }
 }
 
-let cached = globalWithMongoose.mongoose
-
-if (!cached) {
-  cached = globalWithMongoose.mongoose = { conn: null, promise: null }
+if (!global.mongooseCache) {
+  global.mongooseCache = { conn: null, promise: null }
 }
+
+const cached = global.mongooseCache!
 
 async function dbConnect() {
-  if (!cached) {
-    throw new Error('Cached mongoose not initialized')
-  }
   if (cached.conn) {
     return cached.conn
   }
@@ -32,11 +31,20 @@ async function dbConnect() {
       bufferCommands: false,
     }
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts as any).then((mongooseInstance) => {
-      return mongooseInstance.connection
-    })
+    cached.promise = mongoose
+      .connect(MONGODB_URI, opts as any)
+      .then((mongooseInstance) => {
+        return mongooseInstance.connection
+      })
   }
-  cached.conn = await cached.promise
+
+  try {
+    cached.conn = await cached.promise
+  } catch (e) {
+    cached.promise = null
+    throw e
+  }
+
   return cached.conn
 }
 

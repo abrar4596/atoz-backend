@@ -2,9 +2,9 @@ import mongoose, { Schema, model, Document } from 'mongoose'
 
 export interface IDistributor extends Document {
   name: string
-  email: string
-  phone: string
-  moq?: number
+  contactEmail: string
+  contactPhone: string
+  address: string
   createdAt: Date
   updatedAt: Date
 }
@@ -16,21 +16,21 @@ const DistributorSchema = new Schema<IDistributor>(
       required: [true, 'Distributor name is required'],
       trim: true,
     },
-    email: {
+    contactEmail: {
       type: String,
       required: [true, 'Contact email is required'],
       trim: true,
       lowercase: true,
-      match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address'],
     },
-    phone: {
+    contactPhone: {
       type: String,
-      required: [true, 'Phone number is required'],
+      required: [true, 'Contact phone is required'],
       trim: true,
     },
-    moq: {
-      type: Number,
-      min: [1, 'MOQ must be at least 1'],
+    address: {
+      type: String,
+      required: [true, 'Address is required'],
+      trim: true,
     },
   },
   {
