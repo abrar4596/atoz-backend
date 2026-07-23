@@ -80,3 +80,4 @@ const ProductSchema = new Schema<IProduct>(
 ProductSchema.index({ distributorId: 1 })
 
 export default mongoose.models.Product || model<IProduct>('Product', ProductSchema)
+export { ProductSchema }
