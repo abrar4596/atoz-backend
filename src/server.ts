@@ -50,7 +50,6 @@ async function startServer() {
         }
       })
     }
-
     const initialPort = Number(PORT) || 5000
     startListen(initialPort)
   } catch (error: any) {
