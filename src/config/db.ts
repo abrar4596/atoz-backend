@@ -11,7 +11,7 @@ const isSrvDnsError = (error: any) => {
     error?.code === 'ENOTFOUND' &&
     error?.syscall === 'querySrv' &&
     typeof error?.hostname === 'string' &&
-    error.hostname.endsWith('cluster.mongodb.net')
+    error.hostname.endsWith('mongodb.net')
   )
 }
 
