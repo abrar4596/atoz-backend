@@ -31,7 +31,7 @@ export const getOrderHistory = async (req: any, res: Response) => {
               brand: 'Optimum Nutrition',
               flavour: 'Double Rich Chocolate',
               quantity: 1,
-              price: 74.99
+              price: 7499
             },
             {
               productId: 'mock-p2',
@@ -39,10 +39,10 @@ export const getOrderHistory = async (req: any, res: Response) => {
               brand: 'Cellucor',
               flavour: 'Cherry Limeade',
               quantity: 2,
-              price: 34.99
+              price: 3499
             }
           ],
-          totalAmount: 144.97,
+          totalAmount: 14497,
           status: 'Delivered',
           createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5)
         },
@@ -55,10 +55,10 @@ export const getOrderHistory = async (req: any, res: Response) => {
               brand: 'Orgain',
               flavour: 'Creamy Chocolate Fudge',
               quantity: 1,
-              price: 32.99
+              price: 3299
             }
           ],
-          totalAmount: 32.99,
+          totalAmount: 3299,
           status: 'Processing',
           createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1)
         },
@@ -71,10 +71,10 @@ export const getOrderHistory = async (req: any, res: Response) => {
               brand: 'Optimum Nutrition',
               flavour: 'Unflavoured',
               quantity: 1,
-              price: 29.99
+              price: 2999
             }
           ],
-          totalAmount: 29.99,
+          totalAmount: 2999,
           status: 'Ready for Pickup',
           createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4)
         }
