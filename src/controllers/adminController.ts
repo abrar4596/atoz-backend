@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import mongoose from 'mongoose'
 import Product from '../models/Product'
 import Inventory from '../models/Inventory'
 import { sendPurchaseOrderEmail } from '../services/emailService'
@@ -186,6 +187,60 @@ export const getDistributors = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error fetching distributors:', error)
     return res.status(500).json({ success: false, error: 'Internal server error' })
+  }
+}
+
+export const deleteProduct = async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string }
+
+  try {
+    // Validate MongoDB ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid Product ID format' })
+    }
+
+    let deletedProduct = null
+    let session: mongoose.ClientSession | null = null
+
+    // Try executing with a transaction if supported, else fallback to standard execution
+    try {
+      session = await mongoose.startSession()
+      await session.withTransaction(async () => {
+        // Cascading Cleanup: First, delete the document from the Product collection
+        deletedProduct = await Product.findByIdAndDelete(id).session(session)
+        if (deletedProduct) {
+          // Next, delete all corresponding rows in the Inventory collection
+          await Inventory.deleteMany({ productId: id }).session(session)
+        }
+      })
+    } catch (txError: any) {
+      console.warn('Mongoose transaction failed or not supported, falling back to sequential delete:', txError.message)
+      // Fallback if transaction is not supported (e.g., standalone local MongoDB)
+      deletedProduct = await Product.findByIdAndDelete(id)
+      if (deletedProduct) {
+        await Inventory.deleteMany({ productId: id })
+      }
+    } finally {
+      if (session) {
+        await session.endSession()
+      }
+    }
+
+    if (!deletedProduct) {
+      return res.status(404).json({ success: false, error: 'Product not found' })
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Product and linked inventory deleted successfully'
+    })
+  } catch (error: any) {
+    console.error('Error in deleteProduct controller:', error)
+    return res.status(500).json({
+      success: false,
+      error: 'An internal server error occurred while deleting the product.',
+      details: error.message
+    })
   }
 }
 
