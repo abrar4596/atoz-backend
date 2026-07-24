@@ -14,12 +14,17 @@ export interface IProduct extends Document {
   description: string
   price: number
   brand: string
-  imageUrl: string
+  imageUrl?: string
+  imageUrls: string[]
   category: ProductCategory
   flavourTags: string[]
   distributorId: Types.ObjectId | IDistributor
   createdAt: Date
   updatedAt: Date
+}
+
+function arrayLimit(val: string[]) {
+  return val.length <= 5
 }
 
 const ProductSchema = new Schema<IProduct>(
@@ -54,8 +59,12 @@ const ProductSchema = new Schema<IProduct>(
     },
     imageUrl: {
       type: String,
-      required: [true, 'Image URL is required'],
       trim: true,
+    },
+    imageUrls: {
+      type: [String],
+      validate: [arrayLimit, '{PATH} exceeds the limit of 5'],
+      default: [],
     },
     category: {
       type: String,

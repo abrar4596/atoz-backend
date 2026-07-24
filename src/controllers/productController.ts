@@ -188,33 +188,51 @@ export const createProduct = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Stock quantity must be a non-negative number' })
     }
 
-    // Process image file or fallback to URL
-    let finalImageUrl = ''
-    if (req.file) {
+    // Process multiple uploaded files or fallback to imageUrl / imageUrls in body
+    let finalUrls: string[] = []
+    const files = req.files as Express.Multer.File[] | undefined
+
+    if (files && files.length > 0) {
+      if (files.length > 5) {
+        return res.status(400).json({ success: false, error: 'Cannot upload more than 5 images' })
+      }
       try {
-        const uploadResult = await uploadToCloudinary(req.file.buffer)
-        finalImageUrl = uploadResult.secure_url
+        const uploadPromises = files.map(file => uploadToCloudinary(file.buffer))
+        const uploadResults = await Promise.all(uploadPromises)
+        finalUrls = uploadResults.map(result => result.secure_url)
       } catch (uploadError: any) {
         console.error('Cloudinary upload error:', uploadError)
-        return res.status(500).json({ success: false, error: 'Failed to upload image to Cloudinary' })
+        return res.status(500).json({ success: false, error: 'Failed to upload images to Cloudinary' })
+      }
+    } else if (req.body.imageUrls) {
+      if (Array.isArray(req.body.imageUrls)) {
+        finalUrls = req.body.imageUrls.map((u: any) => String(u).trim()).filter(Boolean)
+      } else if (typeof req.body.imageUrls === 'string') {
+        finalUrls = req.body.imageUrls.split(',').map((u: any) => String(u).trim()).filter(Boolean)
       }
     } else if (imageUrl && typeof imageUrl === 'string') {
-      finalImageUrl = imageUrl.trim()
+      finalUrls = [imageUrl.trim()]
     }
 
-    if (!finalImageUrl) {
-      return res.status(400).json({ success: false, error: 'Product image file or image URL is required' })
+    if (finalUrls.length === 0) {
+      return res.status(400).json({ success: false, error: 'At least one product image is required' })
+    }
+    if (finalUrls.length > 5) {
+      return res.status(400).json({ success: false, error: 'A product can have a maximum of 5 images' })
     }
 
     // Strict URL Validation using native URL constructor
-    try {
-      const parsedUrl = new URL(finalImageUrl)
-      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-        return res.status(400).json({ success: false, error: 'Invalid or non-absolute URL: Protocol must be http or https' })
+    const validatedUrls: string[] = []
+    for (const urlStr of finalUrls) {
+      try {
+        const parsedUrl = new URL(urlStr)
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+          return res.status(400).json({ success: false, error: `Invalid or non-absolute URL: ${urlStr}` })
+        }
+        validatedUrls.push(parsedUrl.href)
+      } catch (urlError) {
+        return res.status(400).json({ success: false, error: `Invalid or non-absolute URL: ${urlStr}` })
       }
-      finalImageUrl = parsedUrl.href
-    } catch (urlError) {
-      return res.status(400).json({ success: false, error: 'Invalid or non-absolute URL' })
     }
 
     // Check unique SKU
@@ -233,7 +251,8 @@ export const createProduct = async (req: Request, res: Response) => {
       description: description.trim(),
       price,
       brand: brand.trim(),
-      imageUrl: finalImageUrl,
+      imageUrl: validatedUrls[0] || '',
+      imageUrls: validatedUrls,
       category: category.trim(),
       flavourTags: Array.isArray(flavourTags)
         ? flavourTags.map(tag => String(tag).trim()).filter(Boolean)
@@ -287,6 +306,11 @@ export const updateProduct = async (req: Request, res: Response) => {
     const { id } = req.params
     if (typeof id !== 'string' || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid Product ID format' })
+    }
+
+    const currentProduct = await Product.findById(id)
+    if (!currentProduct) {
+      return res.status(404).json({ success: false, error: 'Product not found' })
     }
 
     const {
@@ -347,27 +371,56 @@ export const updateProduct = async (req: Request, res: Response) => {
       }
     }
 
-    // Cloudinary stream upload for new image file if provided
-    let finalImageUrl = undefined
-    if (req.file) {
-      try {
-        const uploadResult = await uploadToCloudinary(req.file.buffer)
-        finalImageUrl = uploadResult.secure_url
-      } catch (uploadError: any) {
-        console.error('Cloudinary upload error:', uploadError)
-        return res.status(500).json({ success: false, error: 'Failed to upload new image to Cloudinary' })
+    // Handle complex multi-image update
+    let existingImagesArray: string[] = []
+    if (req.body.existingImages !== undefined) {
+      if (Array.isArray(req.body.existingImages)) {
+        existingImagesArray = req.body.existingImages.map((u: any) => String(u).trim()).filter(Boolean)
+      } else if (typeof req.body.existingImages === 'string') {
+        existingImagesArray = req.body.existingImages.split(',').map((u: any) => String(u).trim()).filter(Boolean)
+      }
+    } else {
+      existingImagesArray = currentProduct.imageUrls || []
+      if (existingImagesArray.length === 0 && currentProduct.imageUrl) {
+        existingImagesArray = [currentProduct.imageUrl]
       }
     }
 
-    if (finalImageUrl) {
+    const files = req.files as Express.Multer.File[] | undefined
+    const newFilesCount = files ? files.length : 0
+
+    if (existingImagesArray.length + newFilesCount > 5) {
+      return res.status(400).json({ success: false, error: 'A product can have a maximum of 5 images' })
+    }
+
+    let newUploadedUrls: string[] = []
+    if (files && files.length > 0) {
       try {
-        const parsedUrl = new URL(finalImageUrl)
+        const uploadPromises = files.map(file => uploadToCloudinary(file.buffer))
+        const uploadResults = await Promise.all(uploadPromises)
+        newUploadedUrls = uploadResults.map(result => result.secure_url)
+      } catch (uploadError: any) {
+        console.error('Cloudinary upload error:', uploadError)
+        return res.status(500).json({ success: false, error: 'Failed to upload new images to Cloudinary' })
+      }
+    }
+
+    const finalImageUrls = [...existingImagesArray, ...newUploadedUrls]
+    if (finalImageUrls.length === 0) {
+      return res.status(400).json({ success: false, error: 'At least one product image is required' })
+    }
+
+    // Strict URL validation
+    const validatedUrls: string[] = []
+    for (const urlStr of finalImageUrls) {
+      try {
+        const parsedUrl = new URL(urlStr)
         if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-          return res.status(400).json({ success: false, error: 'Invalid or non-absolute URL: Protocol must be http or https' })
+          return res.status(400).json({ success: false, error: `Invalid or non-absolute URL: ${urlStr}` })
         }
-        finalImageUrl = parsedUrl.href
-      } catch (urlError) {
-        return res.status(400).json({ success: false, error: 'Invalid or non-absolute URL' })
+        validatedUrls.push(parsedUrl.href)
+      } catch (err) {
+        return res.status(400).json({ success: false, error: `Invalid or non-absolute URL: ${urlStr}` })
       }
     }
 
@@ -380,7 +433,9 @@ export const updateProduct = async (req: Request, res: Response) => {
     if (brand !== undefined) productUpdate.brand = brand.trim()
     if (category !== undefined) productUpdate.category = category.trim()
     if (distributorId !== undefined) productUpdate.distributorId = distributorId
-    if (finalImageUrl !== undefined) productUpdate.imageUrl = finalImageUrl
+    
+    productUpdate.imageUrls = validatedUrls
+    productUpdate.imageUrl = validatedUrls[0] || ''
 
     if (flavourTags !== undefined) {
       productUpdate.flavourTags = Array.isArray(flavourTags)

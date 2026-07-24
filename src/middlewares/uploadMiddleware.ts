@@ -10,4 +10,5 @@ const upload = multer({
   },
 })
 
+export const uploadImages = upload.array('images', 5)
 export default upload
