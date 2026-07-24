@@ -128,3 +128,34 @@ export const deleteProduct = async (req: Request, res: Response) => {
   }
 }
 
+export const getProductPreview = async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string }
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid Product ID format' })
+    }
+
+    const product = await Product.findById(id).lean()
+    if (!product) {
+      return res.status(404).json({ success: false, error: 'Product not found' })
+    }
+
+    const inventory = await Inventory.findOne({ productId: id }).lean()
+
+    return res.status(200).json({
+      success: true,
+      product,
+      inventory: inventory || null
+    })
+  } catch (error: any) {
+    console.error('Error in getProductPreview controller:', error)
+    return res.status(500).json({
+      success: false,
+      error: 'An internal server error occurred while retrieving the product preview.',
+      details: error.message
+    })
+  }
+}
+
+
