@@ -14,7 +14,13 @@ const app = express()
 const PORT = process.env.PORT || 5000
 
 // Middleware
-app.use(cors())
+app.use(cors({
+  origin: (origin, callback) => {
+    // Reflect request origin dynamically to allow credentials from any origin (e.g. dev ports)
+    callback(null, true)
+  },
+  credentials: true
+}))
 app.use(express.json())
 
 // Database connection middleware (critical for serverless / Vercel cold starts)
