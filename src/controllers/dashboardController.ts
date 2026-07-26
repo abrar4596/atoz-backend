@@ -56,9 +56,20 @@ export const getRoiDashboard = async (req: Request, res: Response) => {
         }
       },
       {
+        $addFields: {
+          productObjectId: {
+            $cond: {
+              if: { $or: [{ $eq: ['$productId', null] }, { $eq: ['$productId', ''] }] },
+              then: null,
+              else: { $toObjectId: '$productId' }
+            }
+          }
+        }
+      },
+      {
         $lookup: {
           from: 'products',
-          localField: 'productId',
+          localField: 'productObjectId',
           foreignField: '_id',
           as: 'product'
         }
@@ -87,7 +98,7 @@ export const getRoiDashboard = async (req: Request, res: Response) => {
       }
     })
   } catch (error: any) {
-    console.error('Error fetching ROI dashboard stats:', error)
+    console.error("Aggregation Error:", error)
     return res.status(500).json({
       success: false,
       error: error.message || 'Internal server error'
