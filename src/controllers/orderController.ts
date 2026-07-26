@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import mongoose from 'mongoose'
 import Order from '../models/Order'
 import User from '../models/User'
 import Inventory from '../models/Inventory'
@@ -168,4 +169,24 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, error: error.message || 'Internal server error' })
   }
 }
+
+export const deleteOrder = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+    if (typeof id !== 'string' || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid order ID format' })
+    }
+
+    const deletedOrder = await Order.findByIdAndDelete(id)
+    if (!deletedOrder) {
+      return res.status(404).json({ success: false, error: 'Order not found' })
+    }
+
+    return res.status(200).json({ success: true, message: 'Order deleted successfully' })
+  } catch (error: any) {
+    console.error('Error in deleteOrder controller:', error)
+    return res.status(500).json({ success: false, error: error.message || 'Internal server error' })
+  }
+}
+
 
