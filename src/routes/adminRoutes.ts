@@ -3,6 +3,7 @@ import { triggerReorder, getDistributors, deleteProduct, getProductPreview } fro
 import { getFlaggedInventory, getDashboardStats } from '../controllers/inventoryController'
 import { createProduct, updateProduct } from '../controllers/productController'
 import { getRoiDashboard } from '../controllers/dashboardController'
+import { getAllOrders, updateOrderStatus } from '../controllers/orderController'
 import { authMiddleware, adminMiddleware } from '../middlewares/auth'
 import upload, { uploadImages } from '../middlewares/uploadMiddleware'
 
@@ -12,6 +13,8 @@ router.post('/reorder', triggerReorder)
 router.get('/inventory', getFlaggedInventory)
 router.get('/stats', getDashboardStats)
 router.get('/dashboard/roi', authMiddleware, adminMiddleware, getRoiDashboard)
+router.get('/orders', authMiddleware, adminMiddleware, getAllOrders)
+router.patch('/orders/:id/status', authMiddleware, adminMiddleware, updateOrderStatus)
 router.post('/products', authMiddleware, adminMiddleware, uploadImages, createProduct)
 router.get('/products/:id', authMiddleware, adminMiddleware, getProductPreview)
 router.put('/products/:id', authMiddleware, adminMiddleware, uploadImages, updateProduct)
@@ -19,6 +22,7 @@ router.get('/distributors', authMiddleware, adminMiddleware, getDistributors)
 router.delete('/products/:id', authMiddleware, adminMiddleware, deleteProduct)
 
 export default router
+
 
 
 

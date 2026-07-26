@@ -128,3 +128,44 @@ export const createOrder = async (req: any, res: Response) => {
     return res.status(500).json({ success: false, error: error.message || 'Server error' })
   }
 }
+
+export const getAllOrders = async (req: Request, res: Response) => {
+  try {
+    const orders = await Order.find({})
+      .sort({ createdAt: -1 })
+      .populate('user', 'name email')
+
+    return res.status(200).json({ success: true, data: orders })
+  } catch (error: any) {
+    console.error('Error in getAllOrders controller:', error)
+    return res.status(500).json({ success: false, error: error.message || 'Internal server error' })
+  }
+}
+
+export const updateOrderStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+    const { status } = req.body
+
+    const allowedStatuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, error: `Invalid status. Must be one of: ${allowedStatuses.join(', ')}` })
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    ).populate('user', 'name email')
+
+    if (!updatedOrder) {
+      return res.status(404).json({ success: false, error: 'Order not found' })
+    }
+
+    return res.status(200).json({ success: true, data: updatedOrder })
+  } catch (error: any) {
+    console.error('Error in updateOrderStatus controller:', error)
+    return res.status(500).json({ success: false, error: error.message || 'Internal server error' })
+  }
+}
+

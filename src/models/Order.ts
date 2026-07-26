@@ -13,7 +13,7 @@ export interface IOrder extends Document {
   userId: mongoose.Types.ObjectId
   items: IOrderItem[]
   totalAmount: number
-  status: 'Pending' | 'Processing' | 'Ready for Pickup' | 'Out for Delivery' | 'Delivered'
+  status: 'Pending' | 'Processing' | 'Ready for Pickup' | 'Out for Delivery' | 'Delivered' | 'Shipped' | 'Cancelled'
   createdAt: Date
   updatedAt: Date
 }
@@ -33,14 +33,25 @@ const OrderSchema = new Schema<IOrder>({
   totalAmount: { type: Number, required: true },
   status: { 
     type: String, 
-    enum: ['Pending', 'Processing', 'Ready for Pickup', 'Out for Delivery', 'Delivered'],
+    enum: ['Pending', 'Processing', 'Ready for Pickup', 'Out for Delivery', 'Delivered', 'Shipped', 'Cancelled'],
     default: 'Pending',
     required: true
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+})
+
+// Virtual to populate customer User record
+OrderSchema.virtual('user', {
+  ref: 'User',
+  localField: 'userId',
+  foreignField: '_id',
+  justOne: true
 })
 
 const OrderModel: Model<IOrder> = mongoose.models.Order || mongoose.model<IOrder>('Order', OrderSchema)
 export { OrderModel as Order }
 export default OrderModel
+
