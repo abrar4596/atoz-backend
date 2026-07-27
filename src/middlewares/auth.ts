@@ -14,7 +14,7 @@ export const authMiddleware = async (req: AuthRequest, res: Response, next: Next
   try {
     let token = req.headers.authorization?.split(' ')[1]
     
-    if (!token) {
+    if (!token || token === 'undefined' || token === 'null') {
       const cookieHeader = req.headers.cookie
       if (cookieHeader) {
         const cookies = Object.fromEntries(
@@ -24,7 +24,7 @@ export const authMiddleware = async (req: AuthRequest, res: Response, next: Next
       }
     }
 
-    if (!token) {
+    if (!token || token === 'undefined' || token === 'null') {
       return res.status(401).json({ success: false, error: 'Authorization token required' })
     }
 

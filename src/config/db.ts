@@ -67,6 +67,26 @@ const runMigration = async (connection: mongoose.Connection) => {
   }
 };
 
+const seedDefaultDistributor = async () => {
+  try {
+    const DistributorModule = require('../models/Distributor');
+    const Distributor = DistributorModule.default || DistributorModule;
+    const count = await Distributor.countDocuments();
+    if (count === 0) {
+      console.log('No distributors found. Seeding dummy distributor...');
+      await Distributor.create({
+        name: 'Apex Global Distributors',
+        contactEmail: 'dummy@apex.com',
+        contactPhone: '123-456-7890',
+        address: '123 Apex Way, Supply City, SC 12345',
+      });
+      console.log('Dummy distributor seeded successfully.');
+    }
+  } catch (seedErr) {
+    console.error('Error seeding default distributor:', seedErr);
+  }
+};
+
 export const dbConnect = async () => {
   // Disable command buffering to prevent queries from hanging indefinitely when disconnected
   mongoose.set('bufferCommands', false);
@@ -87,20 +107,23 @@ export const dbConnect = async () => {
         const conn = await mongoose.connect(MONGODB_URI, opts);
         console.log(`MongoDB connected: ${conn.connection.host}`);
         await runMigration(conn.connection);
+        await seedDefaultDistributor();
         return conn.connection;
       } catch (error: any) {
         console.error('MongoDB connection error:', error);
 
-        if (isSrvDnsError(error)) {
-          const fallbackUri = LOCAL_FALLBACK_URI;
-          console.warn(`Falling back to local MongoDB at ${fallbackUri} because Atlas SRV DNS lookup failed.`);
+        const fallbackUri = LOCAL_FALLBACK_URI;
+        console.warn(`Falling back to local MongoDB at ${fallbackUri} due to connection failure.`);
+        try {
           const conn = await mongoose.connect(fallbackUri, opts);
           console.log(`MongoDB connected: ${conn.connection.host} (local fallback)`);
           await runMigration(conn.connection);
+          await seedDefaultDistributor();
           return conn.connection;
+        } catch (fallbackErr) {
+          console.error('Failed to connect to local MongoDB fallback:', fallbackErr);
+          throw error;
         }
-
-        throw error;
       }
     })();
   }

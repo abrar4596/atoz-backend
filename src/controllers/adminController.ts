@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import Product from '../models/Product'
 import Inventory from '../models/Inventory'
 import { sendPurchaseOrderEmail } from '../services/emailService'
+import Distributor from '../models/Distributor'
 
 export const triggerReorder = async (req: Request, res: Response) => {
   try {
@@ -46,9 +47,6 @@ export const triggerReorder = async (req: Request, res: Response) => {
 
 export const getDistributors = async (req: Request, res: Response) => {
   try {
-    const DistributorModule = require('../models/Distributor')
-    const Distributor = DistributorModule.default || DistributorModule
-    
     let distributors = await Distributor.find({})
     if (distributors.length === 0) {
       console.log('No distributors found, auto-seeding defaults...')
